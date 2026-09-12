@@ -1,0 +1,38 @@
+# Planning/reference docs — kept locally, not versioned (see docs/README note)
+docs/
+
+# v2 (active development) — never pushed; only v1 is the public/stable version.
+# Blanket-ignored rather than listing its internals (node_modules, data/*.duckdb,
+# watch-folder/, logs/, certs/, etc.) individually.
+/v2/
+
+# v1 runtime data — code is pushed, generated/local runtime state is not.
+v1/data/
+v1/logs/
+v1/certs/
+v1/downloads/
+
+# Dependencies
+node_modules/
+
+# Build output
+v1/web/dist/
+v1/server/dist/
+src-tauri/target/
+
+# Env / secrets
+.env
+.env.local
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Setup file
+setup_mac.md

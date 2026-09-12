@@ -1,0 +1,18 @@
+{
+  "name": "stockwatcher",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local trading-terminal dashboard: ingests Nifty 50 OHLCV data from Yahoo Finance, computes technical indicators incrementally, serves a live browser dashboard.",
+  "workspaces": [
+    "v1/server",
+    "v1/web"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace v1/server",
+    "test:server": "npm run test --workspace v1/server"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}

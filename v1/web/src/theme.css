@@ -1,0 +1,135 @@
+/* Trading-terminal palette carried over from the reviewed design canvas
+   (docs artifact "StockWatcher Design"). Dark is the primary/default
+   surface; light is a proper second theme, not an inverted afterthought. */
+:root {
+  --bg: #eef1f7;
+  --panel: #ffffff;
+  --panel-2: #eef1f7;
+  --border: #d7dce6;
+  --border-2: #c1c9d8;
+  --input-bg: #f4f6fb;
+  --track-bg: #e4e8f0;
+  --text: #151a26;
+  --text-2: #4b5468;
+  --text-3: #727d92;
+  --accent: #0369a1;
+  --pos: #0a8f4e;
+  --neg: #c81e3f;
+  --warn: #92660a;
+  --shadow: rgba(30, 40, 60, 0.14);
+  --highlight: #fff3b0;
+  --highlight-text: #151a26;
+  --gold: #b8860b;
+}
+
+:root[data-theme='dark'] {
+  --bg: #05070d;
+  --panel: #0b0f1a;
+  --panel-2: #0e1424;
+  --border: #1a2136;
+  --border-2: #232c47;
+  --input-bg: #070a12;
+  --track-bg: #141b2c;
+  --text: #e7edf7;
+  --text-2: #8892a6;
+  --text-3: #525d75;
+  --accent: #2dd4ff;
+  --pos: #39ff88;
+  --neg: #ff3b5c;
+  --warn: #f5a623;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --highlight: #ced3dc;
+  --highlight-text: #12151c;
+  --gold: #ffd75e;
+}
+
+/* Default to dark absent an explicit choice -- this is a trading terminal,
+   not a document, so it doesn't defer to prefers-color-scheme: light. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg: #eef1f7;
+    --panel: #ffffff;
+    --panel-2: #eef1f7;
+    --border: #d7dce6;
+    --border-2: #c1c9d8;
+    --input-bg: #f4f6fb;
+    --track-bg: #e4e8f0;
+    --text: #151a26;
+    --text-2: #4b5468;
+    --text-3: #727d92;
+    --accent: #0369a1;
+    --pos: #0a8f4e;
+    --neg: #c81e3f;
+    --warn: #92660a;
+    --shadow: rgba(30, 40, 60, 0.14);
+    --highlight: #fff3b0;
+    --highlight-text: #151a26;
+    --gold: #b8860b;
+  }
+}
+:root:not([data-theme='light']):not([data-theme='dark']) {
+  --bg: #05070d;
+  --panel: #0b0f1a;
+  --panel-2: #0e1424;
+  --border: #1a2136;
+  --border-2: #232c47;
+  --input-bg: #070a12;
+  --track-bg: #141b2c;
+  --text: #e7edf7;
+  --text-2: #8892a6;
+  --text-3: #525d75;
+  --accent: #2dd4ff;
+  --pos: #39ff88;
+  --neg: #ff3b5c;
+  --warn: #f5a623;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --highlight: #ced3dc;
+  --highlight-text: #12151c;
+  --gold: #ffd75e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+code,
+.mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--panel-2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 5px;
+}
+
+button,
+select,
+input {
+  font-family: inherit;
+  color: var(--text);
+}
+
+button {
+  cursor: pointer;
+}

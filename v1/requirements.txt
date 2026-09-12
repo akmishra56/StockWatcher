@@ -1,0 +1,42 @@
+# StockWatcher v1 (stable, Yahoo-only, Nifty 50) — Environment & Package Manifest
+#
+# This is a human-readable portability reference (e.g. for setting up on a
+# MacBook), not a pip requirements file — StockWatcher is a Node.js project.
+# Once the code is scaffolded (Phase 1), package.json + package-lock.json
+# become the actual source of truth; this file should be regenerated from
+# them at that point so it never drifts silently out of date.
+#
+# See docs/architecture.md for the rationale behind each choice.
+
+## System-level (install once per machine)
+node >= 20.x LTS          # nvm recommended: `nvm install 20 && nvm use 20`
+npm >= 10.x                # ships with Node 20
+duckdb (optional CLI)       # useful for ad-hoc inspection of data/watchlist.duckdb; brew install duckdb (macOS)
+
+## server/ (Node.js + Fastify backend)
+fastify                     # HTTP server + routing
+@fastify/websocket          # WebSocket support on /ws
+@fastify/multipart          # multipart/form-data parsing for manual CSV upload endpoints
+duckdb                      # or @duckdb/node-api — DuckDB Node bindings (native module; confirm which binding on macOS ARM before scaffolding)
+chokidar                    # CSV watch-folder file watcher
+csv-parse                   # streaming CSV parser
+dayjs                       # + dayjs/plugin/timezone + dayjs/plugin/utc — forced Asia/Kolkata everywhere
+node-cron                   # scheduler tick (every minute; market-hours slot check, see docs/architecture.md §8)
+pino                        # structured logging (Fastify's default logger)
+zod                         # request/settings/filter schema validation
+
+## web/ (React + Vite frontend)
+react
+react-dom
+vite
+typescript
+
+## Dev tooling (both packages)
+eslint
+prettier
+vitest                      # unit tests for indicator formulas — hand-checked-bar verification (Phase 1)
+
+## Phase 6 — Tauri desktop packaging (optional, not needed for Phases 1-5)
+@tauri-apps/cli
+@tauri-apps/api
+rust (stable toolchain via rustup)   # required by Tauri; on macOS also requires Xcode Command Line Tools
