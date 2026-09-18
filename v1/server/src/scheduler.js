@@ -103,7 +103,7 @@ export class Scheduler {
     if (this._running) throw new Error('A fetch+ingest cycle is already running');
     this._running = true;
     try {
-      await enqueueScrape(() => this._runOrchestrationCycle(currentScheduledSlot(this.intervalMinutes)), this.minRunGapSeconds * 1000);
+      await enqueueScrape(() => this._runOrchestrationCycle(currentScheduledSlot(this.marketOpenTime, this.marketCloseTime, this.intervalMinutes)), this.minRunGapSeconds * 1000);
     } finally {
       this._running = false;
     }
@@ -129,7 +129,7 @@ export class Scheduler {
   }
 
   scheduledSlot() {
-    return currentScheduledSlot(this.intervalMinutes);
+    return currentScheduledSlot(this.marketOpenTime, this.marketCloseTime, this.intervalMinutes);
   }
 
   async setInterval(minutes) {

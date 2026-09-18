@@ -72,10 +72,10 @@ export class FilterEngine {
       const previous = this.lastKnownMatches.get(filter.id) ?? new Set();
 
       for (const symbol of newMatches) {
-        if (!previous.has(symbol)) logRows.push({ filterId: filter.id, symbol, action: 'added', ts_ist: nowIst });
+        if (!previous.has(symbol)) logRows.push({ filterId: filter.id, filterName: filter.name, symbol, action: 'added', ts_ist: nowIst });
       }
       for (const symbol of previous) {
-        if (!newMatches.has(symbol)) logRows.push({ filterId: filter.id, symbol, action: 'removed', ts_ist: nowIst });
+        if (!newMatches.has(symbol)) logRows.push({ filterId: filter.id, filterName: filter.name, symbol, action: 'removed', ts_ist: nowIst });
       }
 
       this.lastKnownMatches.set(filter.id, newMatches);

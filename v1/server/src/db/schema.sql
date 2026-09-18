@@ -314,3 +314,49 @@ WHERE
         WHEN '"nifty500"'  THEN COALESCE(c.is_nifty500, FALSE)
         ELSE TRUE
     END;
+
+-- Watchlists tab (ported from v2, 2026-09-16 -- no news-scraping tables here,
+-- v1 doesn't have that feature). Named, collapsible groups of symbols.
+CREATE TABLE IF NOT EXISTS watchlists (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS watchlist_symbols (
+    watchlist_id TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    added_at TEXT,
+    PRIMARY KEY (watchlist_id, symbol)
+);
+
+-- Price alert ticker (ported from v2, 2026-09-16). User-configured price
+-- levels; direction is the crossing edge priceAlerts/engine.js watches for
+-- via the same edge-triggered crosses_above/crosses_below semantics
+-- filters/conditions.js already implements for saved filters.
+CREATE TABLE IF NOT EXISTS price_alerts (
+    id TEXT PRIMARY KEY,
+    symbol TEXT NOT NULL,
+    direction TEXT NOT NULL,          -- 'above' | 'below'
+    alert_price DOUBLE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TEXT
+);
+
+-- One row per detected crossing. An alert shows in the bottom ticker bar for
+-- 24h from triggered_at_ist (real wall-clock time), then rolls off into the
+-- Settings > Price Alerts log -- ticker vs. log membership is computed at
+-- query time (routes/priceAlerts.js), not tracked as a separate state here.
+-- current price for both the ticker and the log is joined live from
+-- latest_snapshot at read time, never stored on this row.
+CREATE SEQUENCE IF NOT EXISTS price_alert_events_id_seq;
+CREATE TABLE IF NOT EXISTS price_alert_events (
+    id INTEGER PRIMARY KEY DEFAULT nextval('price_alert_events_id_seq'),
+    alert_id TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    alert_price DOUBLE NOT NULL,
+    price_after_crossed DOUBLE NOT NULL,
+    slot_ts_ist TEXT NOT NULL,
+    triggered_at_ist TEXT NOT NULL
+);

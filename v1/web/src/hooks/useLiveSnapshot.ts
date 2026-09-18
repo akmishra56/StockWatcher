@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { api, type PriceAlertEvent } from '../api';
 
 export type SnapshotRow = {
   symbol: string;
@@ -33,8 +34,35 @@ export function useLiveSnapshot() {
   const [rows, setRows] = useState<Map<string, SnapshotRow>>(new Map());
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [missingSymbolAlert, setMissingSymbolAlert] = useState<{ count: number; symbols: string[]; ts_ist: string } | null>(null);
+  const [priceAlertEvents, setPriceAlertEvents] = useState<PriceAlertEvent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const backoffRef = useRef(1000);
+
+  // The WS only ever pushes NEW membership transitions from the moment this
+  // tab connects -- a transition that happened before that (an earlier tab
+  // session, a server restart, or just having the tab closed at the time)
+  // was otherwise invisible even though it's sitting in the DB (GET
+  // /api/logs). One-time hydration on mount fixes that; a composite-key
+  // dedupe guards the (normally impossible) race where a live log:new lands
+  // before this fetch resolves.
+  useEffect(() => {
+    let cancelled = false;
+    const keyOf = (e: LogEntry) => `${e.filter_id}|${e.symbol}|${e.action}|${e.ts_ist}`;
+    api
+      .getLogs(200)
+      .then((rows) => {
+        if (cancelled) return;
+        setLogEntries((prev) => {
+          const seen = new Set(prev.map(keyOf));
+          const hydrated = [...rows].reverse().filter((r) => !seen.has(keyOf(r)));
+          return [...hydrated, ...prev].slice(-200);
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let socket: WebSocket;
@@ -62,6 +90,12 @@ export function useLiveSnapshot() {
           setLogEntries((prev) => [...prev, ...msg.entries].slice(-200));
         } else if (msg.type === 'alert:missing-symbols') {
           setMissingSymbolAlert({ count: msg.count, symbols: msg.symbols, ts_ist: msg.ts_ist });
+        } else if (msg.type === 'price-alert:triggered') {
+          // PriceAlertTicker.tsx also polls GET /api/price-alerts/ticker on
+          // an interval for the baseline state -- this is purely so a fresh
+          // crossing shows its "NEW" flash instantly instead of waiting up
+          // to that poll interval.
+          setPriceAlertEvents((prev) => [...msg.events, ...prev].slice(0, 50));
         }
       };
 
@@ -101,6 +135,7 @@ export function useLiveSnapshot() {
     rows: [...rows.values()],
     logEntries,
     missingSymbolAlert,
+    priceAlertEvents,
     connectionStatus,
     clearMissingSymbolAlert: () => setMissingSymbolAlert(null),
     mergeRows,

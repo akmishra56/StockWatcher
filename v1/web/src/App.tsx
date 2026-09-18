@@ -3,8 +3,10 @@ import { useLiveSnapshot } from './hooks/useLiveSnapshot';
 import { useTheme } from './hooks/useTheme';
 import { api } from './api';
 import { DashboardTab } from './components/Dashboard/DashboardTab';
+import { WatchlistsTab } from './components/Watchlists/WatchlistsTab';
 import { SettingsTab } from './components/Settings/SettingsTab';
 import { DisclaimerModal } from './components/Disclaimer/DisclaimerModal';
+import { PriceAlertTicker } from './components/PriceAlerts/PriceAlertTicker';
 import './theme.css';
 import './app.css';
 
@@ -17,12 +19,13 @@ const DISCLAIMER_FLASH_DURATION_MS = 60 * 1000;
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'watchlists', label: 'Watchlists' },
   { key: 'settings', label: 'Settings' },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
 
 export default function App() {
-  const { rows, logEntries, missingSymbolAlert, clearMissingSymbolAlert, connectionStatus, mergeRows } = useLiveSnapshot();
+  const { rows, logEntries, missingSymbolAlert, priceAlertEvents, clearMissingSymbolAlert, connectionStatus, mergeRows } = useLiveSnapshot();
   const { theme, toggle } = useTheme();
   const [tab, setTab] = useState<TabKey>('dashboard');
   const [schedulerEnabled, setSchedulerEnabled] = useState<boolean | null>(null);
@@ -107,8 +110,11 @@ export default function App() {
             clearMissingSymbolAlert={clearMissingSymbolAlert}
           />
         )}
+        {tab === 'watchlists' && <WatchlistsTab rows={rows} mergeRows={mergeRows} />}
         {tab === 'settings' && <SettingsTab onSchedulerChanged={refreshScheduler} />}
       </div>
+
+      <PriceAlertTicker liveEvents={priceAlertEvents} />
     </div>
   );
 }

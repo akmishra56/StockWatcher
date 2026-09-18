@@ -928,4 +928,131 @@ export class DbClient {
     const rows = await this.readAll('SELECT close, ts_ist FROM latest_price_snapshot WHERE symbol = ?', symbol);
     return rows[0] ?? null;
   }
+
+  // ---- watchlists (Watchlists tab, left panel) ---------------------------
+
+  async createWatchlist({ id, name, createdAt }) {
+    await this.run('INSERT INTO watchlists (id, name, created_at) VALUES (?, ?, ?)', id, name, createdAt);
+  }
+
+  async readWatchlists() {
+    return this.readAll('SELECT * FROM watchlists ORDER BY created_at');
+  }
+
+  async renameWatchlist(id, name) {
+    await this.run('UPDATE watchlists SET name = ? WHERE id = ?', name, id);
+  }
+
+  /** No FK cascade in DuckDB -- explicit two-statement delete. */
+  async deleteWatchlist(id) {
+    await this.run('DELETE FROM watchlist_symbols WHERE watchlist_id = ?', id);
+    await this.run('DELETE FROM watchlists WHERE id = ?', id);
+  }
+
+  async addWatchlistSymbol(watchlistId, symbol, addedAt) {
+    await this.run(
+      'INSERT INTO watchlist_symbols (watchlist_id, symbol, added_at) VALUES (?, ?, ?) ON CONFLICT (watchlist_id, symbol) DO NOTHING',
+      watchlistId, symbol, addedAt
+    );
+  }
+
+  async removeWatchlistSymbol(watchlistId, symbol) {
+    await this.run('DELETE FROM watchlist_symbols WHERE watchlist_id = ? AND symbol = ?', watchlistId, symbol);
+  }
+
+  /** All rows across every watchlist -- routes/watchlists.js groups these by watchlist_id. */
+  async readAllWatchlistSymbols() {
+    return this.readAll('SELECT * FROM watchlist_symbols ORDER BY added_at');
+  }
+
+  // ---- price alerts (Settings > Price Alerts, bottom ticker bar) ----------
+
+  async createPriceAlert({ id, symbol, direction, alertPrice, createdAt }) {
+    await this.run(
+      'INSERT INTO price_alerts (id, symbol, direction, alert_price, is_active, created_at) VALUES (?, ?, ?, ?, TRUE, ?)',
+      id, symbol, direction, alertPrice, createdAt
+    );
+  }
+
+  async updatePriceAlert(id, { direction, alertPrice, isActive }) {
+    const fields = [];
+    const values = [];
+    if (direction !== undefined) { fields.push('direction = ?'); values.push(direction); }
+    if (alertPrice !== undefined) { fields.push('alert_price = ?'); values.push(alertPrice); }
+    if (isActive !== undefined) { fields.push('is_active = ?'); values.push(isActive); }
+    if (fields.length === 0) return;
+    await this.run(`UPDATE price_alerts SET ${fields.join(', ')} WHERE id = ?`, ...values, id);
+  }
+
+  async deletePriceAlert(id) {
+    await this.run('DELETE FROM price_alert_events WHERE alert_id = ?', id);
+    await this.run('DELETE FROM price_alerts WHERE id = ?', id);
+  }
+
+  async readPriceAlerts() {
+    return this.readAll('SELECT * FROM price_alerts ORDER BY created_at');
+  }
+
+  /** Only active alerts -- what priceAlerts/engine.js watches each cycle. */
+  async readActivePriceAlerts() {
+    return this.readAll('SELECT * FROM price_alerts WHERE is_active = TRUE');
+  }
+
+  async insertPriceAlertEvent(event) {
+    const rows = await this.all(
+      `INSERT INTO price_alert_events (alert_id, symbol, direction, alert_price, price_after_crossed, slot_ts_ist, triggered_at_ist)
+       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      event.alertId, event.symbol, event.direction, event.alertPrice, event.priceAfterCrossed, event.slotTsIst, event.triggeredAtIst
+    );
+    return rows[0].id;
+  }
+
+  /**
+   * Alerts with an event still inside its 24h ticker window, as of `nowIst`
+   * -- priceAlerts/engine.js uses this both to know an alert is currently
+   * TRIGGERED and to suppress re-triggering it while price oscillates
+   * around the level (one event per 24h window, not one per qualifying tick).
+   * An alert absent from the returned map has no live event (never
+   * triggered, or its last one has already rolled off into the log).
+   * @returns {Promise<Map<string, object>>} alert_id -> latest active event row
+   */
+  async readActivePriceAlertEvents(nowIst) {
+    const rows = await this.readAll(
+      `SELECT * FROM price_alert_events
+       WHERE strptime(triggered_at_ist, '%Y-%m-%d %H:%M:%S') > (strptime(?, '%Y-%m-%d %H:%M:%S') - INTERVAL 24 HOUR)
+       QUALIFY ROW_NUMBER() OVER (PARTITION BY alert_id ORDER BY triggered_at_ist DESC, id DESC) = 1`,
+      nowIst
+    );
+    return new Map(rows.map((r) => [r.alert_id, r]));
+  }
+
+  /**
+   * Events still within their 24h ticker window, newest first, with each
+   * symbol's current price joined live from latest_snapshot (the same view
+   * Dashboard/Watchlists read) rather than the price stored at crossing time.
+   */
+  async readActivePriceAlertTicker(nowIst) {
+    return this.readAll(
+      `SELECT e.*, s.close AS current_price
+       FROM price_alert_events e
+       LEFT JOIN latest_snapshot s USING (symbol)
+       WHERE strptime(e.triggered_at_ist, '%Y-%m-%d %H:%M:%S') > (strptime(?, '%Y-%m-%d %H:%M:%S') - INTERVAL 24 HOUR)
+       QUALIFY ROW_NUMBER() OVER (PARTITION BY e.alert_id ORDER BY e.triggered_at_ist DESC, e.id DESC) = 1
+       ORDER BY e.triggered_at_ist DESC`,
+      nowIst
+    );
+  }
+
+  /** Events that have rolled off the ticker (>24h old) -- Settings > Price Alerts log. */
+  async readPriceAlertLog(nowIst, limit = 200) {
+    return this.readAll(
+      `SELECT e.*, s.close AS current_price
+       FROM price_alert_events e
+       LEFT JOIN latest_snapshot s USING (symbol)
+       WHERE strptime(e.triggered_at_ist, '%Y-%m-%d %H:%M:%S') <= (strptime(?, '%Y-%m-%d %H:%M:%S') - INTERVAL 24 HOUR)
+       ORDER BY e.triggered_at_ist DESC
+       LIMIT ?`,
+      nowIst, limit
+    );
+  }
 }

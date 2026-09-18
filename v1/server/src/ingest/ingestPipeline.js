@@ -19,14 +19,18 @@ export class IngestPipeline {
    * @param {{ publish: (...msgs: object[]) => void }} [deps.broadcaster]
    * @param {() => Set<string>} deps.getFullUniverse
    * @param {() => string} [deps.getActiveSuperFilter]
+   * @param {import('../priceAlerts/engine.js').PriceAlertEngine} [deps.priceAlertEngine]
+   * @param {(entries: object[]) => Promise<void>} [deps.onMembershipEvents]  called with this cycle's 'added' membership-log rows (a stock newly entering a saved filter), same fire-and-forget-but-awaited shape as priceAlertEngine's onEvents
    */
-  constructor({ db, indicatorEngine, filterEngine, broadcaster, getFullUniverse, getActiveSuperFilter }) {
+  constructor({ db, indicatorEngine, filterEngine, broadcaster, getFullUniverse, getActiveSuperFilter, priceAlertEngine, onMembershipEvents }) {
     this.db = db;
     this.indicatorEngine = indicatorEngine;
     this.filterEngine = filterEngine;
     this.broadcaster = broadcaster ?? { publish: () => {} };
     this.getFullUniverse = getFullUniverse;
     this.getActiveSuperFilter = getActiveSuperFilter ?? (() => 'all');
+    this.priceAlertEngine = priceAlertEngine;
+    this.onMembershipEvents = onMembershipEvents;
   }
 
   /**
@@ -127,6 +131,25 @@ export class IngestPipeline {
       ? await this.filterEngine.reevaluateAll(snapshot, superFilter)
       : { logRows: [] };
     if (logRows.length > 0) await this.db.writeMembershipLog(logRows);
+    // Only newly-entering symbols ("added") notify -- "removed" is the
+    // absence of a match, not an event worth a Telegram ping, and matches
+    // the user's own framing of this feature ("whenever a stock enters a
+    // filter list").
+    const membershipAdditions = logRows.filter((r) => r.action === 'added');
+    if (membershipAdditions.length > 0 && this.onMembershipEvents) {
+      await this.onMembershipEvents(membershipAdditions).catch(() => {});
+    }
+
+    // Runs after the per-row snapshot_window sync above, same timing
+    // FilterEngine.reevaluateAll relies on for its own crosses_above/
+    // crosses_below conditions -- this cycle's row is already in place, so
+    // readPreviousSnapshotMap's rank-2 lookup is exactly the prior tick.
+    const { events: priceAlertEvents } = this.priceAlertEngine
+      ? await this.priceAlertEngine.reevaluateAll(snapshot, scheduledTsIst, actualTsIstForLog)
+      : { events: [] };
+    if (priceAlertEvents.length > 0) {
+      this.broadcaster.publish({ type: 'price-alert:triggered', events: priceAlertEvents });
+    }
 
     this.broadcaster.publish({ type: 'snapshot:update', rows: snapshot });
     // logRows carry `filterId` (camelCase, what db.writeMembershipLog/

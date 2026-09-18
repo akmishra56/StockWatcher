@@ -5,6 +5,7 @@ import { DataRecalculateSection } from './DataRecalculateSection';
 import { MonitorLogSection } from './MonitorLogSection';
 import { AutomationSchedulerSection } from './AutomationSchedulerSection';
 import { ClassificationSection } from './ClassificationSection';
+import { PriceAlertsSection } from './PriceAlertsSection';
 
 const SECTIONS = [
   { key: 'indicators', label: 'Indicator Parameters' },
@@ -12,6 +13,7 @@ const SECTIONS = [
   { key: 'data', label: 'Data & Recalculate' },
   { key: 'monitor', label: 'Monitor Log' },
   { key: 'automation', label: 'Automation & Scheduler' },
+  { key: 'priceAlerts', label: 'Price Alerts' },
   { key: 'classification', label: 'Index Classification' },
 ] as const;
 
@@ -35,6 +37,7 @@ export function SettingsTab({ onSchedulerChanged }: { onSchedulerChanged: () => 
         {active === 'data' && <DataRecalculateSection />}
         {active === 'monitor' && <MonitorLogSection />}
         {active === 'automation' && <AutomationSchedulerSection onSchedulerChanged={onSchedulerChanged} />}
+        {active === 'priceAlerts' && <PriceAlertsSection />}
         {active === 'classification' && <ClassificationSection />}
       </div>
     </div>

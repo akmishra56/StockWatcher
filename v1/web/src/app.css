@@ -1748,3 +1748,280 @@ th.history-sym-col {
   color: var(--bg);
   font-weight: 600;
 }
+
+/* ---- watchlists tab (ported from v2, no news feed / no chart in v1) ---- */
+.watchlists-tab {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding: 14px 18px;
+  gap: 10px;
+}
+.watchlists-body {
+  display: flex;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+/* Left column reuses .dashboard-left's width directly -- see
+   WatchlistPanel.tsx -- so "same width as Dashboard's filter section" is a
+   structural guarantee, not two numbers that can drift apart. This class
+   only adds panel-specific spacing on top. */
+.watchlists-left {
+  gap: 10px;
+}
+.watchlists-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+/* v1 has no chart/news split -- the right column is just the indicator
+   card, so it should fill the whole column rather than the 40% share it
+   gets in v2's chart+indicator layout. */
+.watchlists-right-no-split .watchlists-indicator-panel {
+  flex: 1;
+}
+
+.watchlists-new-row {
+  display: flex;
+  gap: 6px;
+}
+.watchlists-new-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  background: var(--input-bg);
+  font-size: 12px;
+}
+.watchlists-empty {
+  font-size: 12px;
+  padding: 6px 2px;
+}
+
+.watchlist-group {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.watchlist-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.watchlist-group-caret {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 10px;
+  padding: 2px 2px;
+  width: 14px;
+  flex-shrink: 0;
+}
+.watchlist-group-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.watchlists-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--input-bg);
+  font-size: 12.5px;
+}
+.watchlist-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 2px 2px 20px;
+}
+.watchlist-symbol-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.watchlist-symbol-row:hover {
+  background: var(--panel-2);
+}
+.watchlist-symbol-row-active {
+  background: var(--panel-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.watchlists-left .symbol-picker {
+  align-items: stretch;
+  min-width: 0;
+  margin-top: 2px;
+}
+.watchlists-left .symbol-picker .search-bar-input-wrap {
+  width: 100%;
+}
+
+.watchlists-indicator-panel {
+  min-width: 0;
+}
+.indicator-detail-card {
+  height: 100%;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.indicator-detail-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12.5px;
+  padding: 16px;
+}
+.indicator-detail-title {
+  font-size: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+.indicator-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+.indicator-detail-label {
+  font-size: 11px;
+}
+.indicator-detail-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+}
+
+/* ---- price alert ticker bar (App.tsx, persists across every tab) ------ */
+.price-alert-ticker {
+  flex-shrink: 0;
+  height: 42px;
+  display: flex;
+  align-items: stretch;
+  background: var(--panel);
+  border-top: 1px solid var(--border-2);
+}
+.price-alert-ticker-badge {
+  flex-shrink: 0;
+  width: 168px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  background: var(--panel-2);
+  border-right: 1px solid var(--border-2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.price-alert-ticker-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--neg);
+  box-shadow: 0 0 6px var(--neg);
+  display: inline-block;
+  animation: price-alert-pulse 1.6s ease-in-out infinite;
+}
+@keyframes price-alert-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.price-alert-ticker-track-outer {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.price-alert-ticker-empty {
+  padding: 0 16px;
+  font-size: 12px;
+}
+.price-alert-ticker-track {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  white-space: nowrap;
+  padding-left: 16px;
+  animation: price-alert-scroll 32s linear infinite;
+}
+.price-alert-ticker-track-static {
+  animation: none;
+}
+.price-alert-ticker-track-outer:hover .price-alert-ticker-track {
+  animation-play-state: paused;
+}
+@keyframes price-alert-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.price-alert-chip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  padding: 5px 4px;
+}
+.price-alert-chip-new {
+  background: var(--gold);
+  color: #221703;
+  padding: 5px 12px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+.price-alert-chip-tag {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  background: #221703;
+  color: var(--gold);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.price-alert-chip-symbol {
+  font-weight: 600;
+}
+.price-alert-chip-price {
+  font-weight: 600;
+}
+.price-alert-chip-new .price-alert-chip-price {
+  color: inherit;
+}
+.price-alert-chip-detail {
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.price-alert-chip-new .price-alert-chip-detail {
+  color: inherit;
+  opacity: 0.85;
+}

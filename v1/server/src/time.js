@@ -5,6 +5,7 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
+import { computeSlots } from './marketHours.js';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -17,14 +18,18 @@ export function nowIst() {
 }
 
 /**
- * Rounds the current IST time down to the nearest `intervalMinutes` slot --
- * used when a CSV/filename doesn't explicitly encode its scheduled slot
- * (docs/development_plan.md §4, question 2, still open).
+ * The real scheduled slot closest to right now -- used to tag an ad-hoc
+ * "Run Now" trigger with a slot instead of its own raw arrival time.
+ * Anchored to the actual market-open-anchored grid (computeSlots), same as
+ * roundToScheduledSlot -- an earlier version floored to a naive top-of-hour
+ * bucket instead (e.g. '13:00' rather than '13:15' for a 09:15-anchored
+ * 60-minute grid), which mistagged manual triggers onto a slot that doesn't
+ * exist anywhere else on the grid (found live in v2, 2026-09-16 -- see
+ * docs/issues.md; v1 inherited the same bug from v2's original pattern).
  */
-export function currentScheduledSlot(intervalMinutes) {
-  const now = dayjs().tz(IST);
-  const roundedMinute = Math.floor(now.minute() / intervalMinutes) * intervalMinutes;
-  return now.minute(roundedMinute).second(0).millisecond(0).format('YYYY-MM-DD HH:mm:ss');
+export function currentScheduledSlot(marketOpenTime, marketCloseTime, intervalMinutes) {
+  const slots = computeSlots(marketOpenTime, marketCloseTime, intervalMinutes);
+  return roundToScheduledSlot(nowIst(), slots);
 }
 
 /** A Unix epoch (seconds) -- e.g. a Yahoo Finance chart candle timestamp -- as IST wall-clock 'YYYY-MM-DD HH:mm:ss'. */

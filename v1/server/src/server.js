@@ -29,6 +29,8 @@ import { IngestPipeline } from './ingest/ingestPipeline.js';
 import { BrokerBridge } from './datasource/broker/BrokerBridge.js';
 import { FyersClient } from './datasource/broker/fyers/FyersClient.js';
 import { Scheduler } from './scheduler.js';
+import { PriceAlertEngine } from './priceAlerts/engine.js';
+import { sendTelegramMessage, formatPriceAlertMessage, formatMembershipAlertMessage } from './telegram/notifier.js';
 import { nowIst } from './time.js';
 
 // Every broker BrokerBridge.js can drive, keyed by registry.js's
@@ -51,6 +53,9 @@ import { registerSymbolsRoutes } from './routes/symbols.js';
 import { registerBrokerRoutes } from './routes/broker.js';
 import { registerBackfillRoutes } from './routes/backfill.js';
 import { registerSystemHealthRoutes } from './routes/systemHealth.js';
+import { registerWatchlistRoutes } from './routes/watchlists.js';
+import { registerPriceAlertRoutes } from './routes/priceAlerts.js';
+import { registerTelegramRoutes } from './routes/telegram.js';
 import { startHealthHistorySampler } from './health/history.js';
 import { httpLatency } from './health/metrics.js';
 import { DEFAULT_COLOR_RULES } from './routes/settings.js';
@@ -98,10 +103,37 @@ export async function buildServer(overrides = {}) {
       universeCache = new Set((await db.all('SELECT symbol FROM symbols')).map((r) => r.symbol));
     };
 
+    // Independent of connection kind and of filterEngine -- one condition
+    // (close vs. a fixed alert_price) evaluated per cycle, same as
+    // FilterEngine but with no saved-filter/super-filter scoping.
+    const priceAlertEngine = new PriceAlertEngine(db, {
+      onEvents: async (events) => {
+        const config = await db.readSetting('telegram');
+        if (!config?.enabled) return;
+        for (const event of events) {
+          const result = await sendTelegramMessage(config, formatPriceAlertMessage(event));
+          const ts = nowIst();
+          // Persist per-attempt status so Settings can surface "last send
+          // failed: <reason>" without a separate log table -- one Telegram
+          // config, one rolling status.
+          await db.writeSetting('telegram', { ...config, lastSentAtIst: ts, lastStatus: result.ok ? 'ok' : 'failed', lastError: result.ok ? null : result.error }, ts);
+          if (!result.ok) app.log?.warn({ err: result.error, symbol: event.symbol }, 'Telegram price-alert notification failed');
+        }
+      },
+    });
+
     const pipeline = new IngestPipeline({
-      db, indicatorEngine, filterEngine, broadcaster,
+      db, indicatorEngine, filterEngine, broadcaster, priceAlertEngine,
       getFullUniverse: () => universeCache,
       getActiveSuperFilter: () => superFilterCache,
+      onMembershipEvents: async (entries) => {
+        const config = await db.readSetting('telegram');
+        if (!config?.enabled) return;
+        const result = await sendTelegramMessage(config, formatMembershipAlertMessage(entries));
+        const ts = nowIst();
+        await db.writeSetting('telegram', { ...config, lastSentAtIst: ts, lastStatus: result.ok ? 'ok' : 'failed', lastError: result.ok ? null : result.error }, ts);
+        if (!result.ok) app.log?.warn({ err: result.error, count: entries.length }, 'Telegram membership-alert notification failed');
+      },
     });
 
     const connection = registry.get(connectionId);
@@ -173,6 +205,9 @@ export async function buildServer(overrides = {}) {
   registerBrokerRoutes(app, ctx);
   registerBackfillRoutes(app, ctx);
   registerSystemHealthRoutes(app, ctx);
+  registerWatchlistRoutes(app, ctx);
+  registerPriceAlertRoutes(app, ctx);
+  registerTelegramRoutes(app, ctx);
 
   app.addHook('onClose', async () => {
     if (ctx.adapter) await ctx.adapter.stop();
